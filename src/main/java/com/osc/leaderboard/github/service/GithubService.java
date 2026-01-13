@@ -17,9 +17,12 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.osc.leaderboard.developer.dto.DeveloperDTO;
+import com.osc.leaderboard.developer.service.DeveloperService;
 import com.osc.leaderboard.fetch.model.Fetch;
 import com.osc.leaderboard.github.dtos.PullRequestResultDTO;
 import com.osc.leaderboard.github.dtos.PullRequestSearchDTO;
+import com.osc.leaderboard.pullrequest.service.PullRequestService;
 import com.osc.leaderboard.repo.dtos.RepoDTO;
 import com.osc.leaderboard.repo.service.RepoService;
 
@@ -36,10 +39,17 @@ public class GithubService {
 
     private final RepoService repoService;
 
-    public GithubService(ObjectMapper objectMapper, Environment env, RepoService repoService) {
+    private final DeveloperService developerService;
+
+    private final PullRequestService pullRequestService;
+
+    public GithubService(ObjectMapper objectMapper, Environment env, RepoService repoService,
+            DeveloperService developerService, PullRequestService pullRequestService) {
         this.objectMapper = objectMapper;
         this.env = env;
         this.repoService = repoService;
+        this.developerService = developerService;
+        this.pullRequestService = pullRequestService;
     }
 
     private JsonNode mockPullRequestSearchRequest(Integer page, Instant earliestDate, Optional<Fetch> laterThan)
@@ -95,6 +105,8 @@ public class GithubService {
     private void processPullRequestSearch(PullRequestSearchDTO pullRequestSearchDTO) {
         pullRequestSearchDTO.pullRequestResults().forEach(result -> {
             RepoDTO repoDTO = repoService.createRepo(result.repoName());
+            DeveloperDTO developerDTO = developerService.createDeveloper(result.username(), result.avatarUrl());
+            pullRequestService.createPullRequest(result.mergedAt(), developerDTO.id(), repoDTO.id());
         });
     }
 
