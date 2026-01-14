@@ -43,4 +43,4 @@ secrets.yml
 node_modules
 /.kotlin/
 .m2
-.env
+*.env

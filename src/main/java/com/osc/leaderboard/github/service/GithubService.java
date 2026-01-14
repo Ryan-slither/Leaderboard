@@ -1,6 +1,5 @@
 package com.osc.leaderboard.github.service;
 
-import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -26,6 +25,7 @@ import com.osc.leaderboard.pullrequest.service.PullRequestService;
 import com.osc.leaderboard.repo.dtos.RepoDTO;
 import com.osc.leaderboard.repo.service.RepoService;
 
+// TODO: PLEASE REFACTOR ME
 @Service
 public class GithubService {
 
@@ -52,7 +52,7 @@ public class GithubService {
         this.pullRequestService = pullRequestService;
     }
 
-    private JsonNode mockPullRequestSearchRequest(Integer page, Instant earliestDate, Optional<Fetch> laterThan)
+    private JsonNode mockPullRequestSearchRequest(Integer page, Instant earliestDate, Optional<Fetch> earlierThan)
             throws IOException {
         // Precondition
         if (page == 0 || page > PULL_REQUEST_SEARCH_PATH.size()) {
@@ -60,22 +60,20 @@ public class GithubService {
         }
 
         // Precondition
-        if (laterThan.isPresent()) {
+        if (earlierThan.isPresent()) {
             // Return empty response for testing purposes and adjust count accordingly
             ClassPathResource resource = new ClassPathResource(PULL_REQUEST_SEARCH_PATH.get(3));
-            File file = resource.getFile();
-            JsonNode json = objectMapper.readTree(file);
+            JsonNode json = objectMapper.readTree(resource.getInputStream());
             ObjectNode objectNode = ((ObjectNode) json).put("total_count", 0);
             return (JsonNode) objectNode;
         }
 
         ClassPathResource resource = new ClassPathResource(PULL_REQUEST_SEARCH_PATH.get(page - 1));
-        File file = resource.getFile();
-        JsonNode json = objectMapper.readTree(file);
+        JsonNode json = objectMapper.readTree(resource.getInputStream());
         return json;
     }
 
-    private JsonNode pullRequestSearchRequest(Integer page, Instant earliestDate, Optional<Fetch> laterThan) {
+    private JsonNode pullRequestSearchRequest(Integer page, Instant earliestDate, Optional<Fetch> earlierThan) {
         throw new NotImplementedException();
     }
 
@@ -111,14 +109,14 @@ public class GithubService {
     }
 
     private JsonNode callPullRequestSearchRequest(Integer currPage, Instant earliestDate,
-            Optional<Fetch> laterThan) {
+            Optional<Fetch> earlierThan) {
         String target = env.getProperty("TARGET");
         JsonNode currJson;
         if (target == "prod") {
-            currJson = pullRequestSearchRequest(currPage, earliestDate, laterThan);
+            currJson = pullRequestSearchRequest(currPage, earliestDate, earlierThan);
         } else {
             try {
-                currJson = mockPullRequestSearchRequest(currPage, earliestDate, laterThan);
+                currJson = mockPullRequestSearchRequest(currPage, earliestDate, earlierThan);
             } catch (IOException e) {
                 throw new RuntimeException(e.getMessage());
             }
@@ -128,14 +126,14 @@ public class GithubService {
     }
 
     // This should be called within the fetch service only
-    public Integer fetchPullRequests(Optional<Fetch> laterThan) {
+    public Integer fetchPullRequests(Optional<Fetch> earlierThan) {
         JsonNode currJson;
         Integer currPage = 1;
         Instant earliestDate = Instant.now().plus(1, ChronoUnit.DAYS);
 
-        currJson = callPullRequestSearchRequest(currPage, earliestDate, laterThan);
-
+        currJson = callPullRequestSearchRequest(currPage, earliestDate, earlierThan);
         PullRequestSearchDTO pullRequestSearchDTO = processPullRequestSearchJson(currJson);
+        processPullRequestSearch(pullRequestSearchDTO);
         Integer totalCount = pullRequestSearchDTO.totalCount();
 
         if (totalCount > 100) {
@@ -143,13 +141,12 @@ public class GithubService {
             for (int i = 2; i < totalPages + 1; ++i) {
                 earliestDate = pullRequestSearchDTO.earliestDate();
 
-                currJson = callPullRequestSearchRequest(currPage, earliestDate, laterThan);
-
+                currJson = callPullRequestSearchRequest(i, earliestDate, earlierThan);
                 pullRequestSearchDTO = processPullRequestSearchJson(currJson);
                 processPullRequestSearch(pullRequestSearchDTO);
                 totalCount = pullRequestSearchDTO.totalCount();
 
-                if (i == 4 && env.getProperty("TARGET") != "prod")
+                if (i == PULL_REQUEST_SEARCH_PATH.size() && env.getProperty("TARGET") != "prod")
                     break;
 
                 // // So we don't spam the Github API and get clapped

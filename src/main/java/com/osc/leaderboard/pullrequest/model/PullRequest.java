@@ -2,6 +2,7 @@ package com.osc.leaderboard.pullrequest.model;
 
 import java.time.Instant;
 
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -13,14 +14,14 @@ public class PullRequest {
 
     private Instant mergedAt;
 
-    private String developerId;
+    private ObjectId developerId;
 
-    private String repoId;
+    private ObjectId repoId;
 
     public PullRequest() {
     }
 
-    public PullRequest(String id, Instant mergedAt, String developerId, String repoId) {
+    public PullRequest(String id, Instant mergedAt, ObjectId developerId, ObjectId repoId) {
         Id = id;
         this.mergedAt = mergedAt;
         this.developerId = developerId;
@@ -43,19 +44,19 @@ public class PullRequest {
         this.mergedAt = mergedAt;
     }
 
-    public String getDeveloperId() {
+    public ObjectId getDeveloperId() {
         return developerId;
     }
 
-    public void setDeveloperId(String developerId) {
+    public void setDeveloperId(ObjectId developerId) {
         this.developerId = developerId;
     }
 
-    public String getRepoId() {
+    public ObjectId getRepoId() {
         return repoId;
     }
 
-    public void setRepoId(String repoId) {
+    public void setRepoId(ObjectId repoId) {
         this.repoId = repoId;
     }
 

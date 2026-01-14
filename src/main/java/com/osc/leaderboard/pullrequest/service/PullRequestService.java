@@ -3,9 +3,11 @@ package com.osc.leaderboard.pullrequest.service;
 import java.time.Instant;
 import java.util.List;
 
+import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 
 import com.osc.leaderboard.pullrequest.dto.PullRequestDTO;
+import com.osc.leaderboard.pullrequest.dto.PullRequestLeaderBoardDTO;
 import com.osc.leaderboard.pullrequest.model.PullRequest;
 import com.osc.leaderboard.pullrequest.repository.PullRequestRepository;
 
@@ -19,13 +21,17 @@ public class PullRequestService {
     }
 
     public PullRequestDTO createPullRequest(Instant mergedAt, String developerId, String repoId) {
-        PullRequest pullRequest = new PullRequest(null, mergedAt, developerId, repoId);
+        PullRequest pullRequest = new PullRequest(null, mergedAt, new ObjectId(developerId), new ObjectId(repoId));
         PullRequest pullRequestSaved = pullRequestRepository.save(pullRequest);
         return pullRequestToPullRequestDTO(pullRequestSaved);
     }
 
     public List<PullRequestDTO> findAllPullRequests() {
         return pullRequestRepository.findAll().stream().map(PullRequestService::pullRequestToPullRequestDTO).toList();
+    }
+
+    public List<PullRequestLeaderBoardDTO> getPullRequestLeaderboard() {
+        throw new UnsupportedOperationException("Unimplemented method 'getPullRequestLeaderboard'");
     }
 
     public static PullRequestDTO pullRequestToPullRequestDTO(PullRequest pullRequest) {

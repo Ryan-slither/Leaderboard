@@ -30,7 +30,7 @@ public class FetchController {
         return new ResponseEntity<>(fetchService.createFetch(), HttpStatus.CREATED);
     }
 
-    @GetMapping()
+    @GetMapping
     public ResponseEntity<List<FetchDTO>> getFetchesByDate(@RequestParam(required = false) Instant start,
             @RequestParam(required = false) Instant end) throws BadRequestException {
         if (start == null && end == null) {

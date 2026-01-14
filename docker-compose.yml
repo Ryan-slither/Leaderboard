@@ -1,6 +1,6 @@
 services:
   mongo_db:
-    image: mongo:5.0.2
+    image: mongo:6.0.27
     restart: unless-stopped
     env_file: ./.env
     environment:
@@ -16,14 +16,12 @@ services:
     build: 
       context: ./
       target: dev
-    restart: on-failure
+    restart: unless-stopped
     env_file: ./.env
+    environment:
+      - TARGET=dev
     ports:
       - $SPRING_LOCAL_PORT:$SPRING_DOCKER_PORT
-    environment:
-      SPRING_APPLICATION_JSON: '{
-          "spring.mongodb.uri" : "mongodb://$MONGODB_USER:$MONGODB_PASSWORD@mongo_db:$MONGODB_DOCKER_PORT/$MONGODB_DATABASE?authSource=admin"
-        }'
     volumes:
       - .m2:/root/.m2
     stdin_open: true

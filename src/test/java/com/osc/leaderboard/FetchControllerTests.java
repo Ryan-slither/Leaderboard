@@ -34,7 +34,7 @@ public class FetchControllerTests extends BaseTest {
         FetchDTO fetchDTO1 = fetchService.createFetch();
         FetchDTO fetchDTO2 = fetchService.createFetch();
 
-        assertEquals(fetchDTO1.pullRequestCount(), GithubServiceTests.TOTAL_COUNT);
+        assertEquals(fetchDTO1.pullRequestCount(), GithubServiceTests.TOTAL_STATED_COUNT);
         assertEquals(fetchDTO2.pullRequestCount(), 0);
 
         Instant behindOneMinute = Instant.now().minus(1, ChronoUnit.MINUTES);

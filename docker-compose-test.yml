@@ -1,10 +1,9 @@
 services:
   mongo_db_test:
-    image: mongo:5.0.2
+    image: mongo:6.0.27
     restart: unless-stopped
     env_file: ./.env
     environment:
-      - MONGO_INITDB_DATABASE=$MONGODB_DATABASE_TEST
       - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USER
       - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
     ports:
@@ -15,10 +14,10 @@ services:
     build: 
       context: ./
       target: test
-    env_file: ./.env
+    env_file: 
+      - ./.env
+      - ./test.env
     ports:
       - $SPRING_LOCAL_PORT:$SPRING_DOCKER_PORT
     environment:
-      SPRING_APPLICATION_JSON: '{
-          "spring.mongodb.uri" : "mongodb://$MONGODB_USER:$MONGODB_PASSWORD@mongo_db_test:$MONGODB_DOCKER_PORT/$MONGODB_DATABASE_TEST?authSource=admin"
-        }'
+      - TARGET=test

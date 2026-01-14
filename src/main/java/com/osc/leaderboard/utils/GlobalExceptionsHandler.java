@@ -7,6 +7,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import com.osc.leaderboard.utils.exceptions.BadRequestException;
 
+import io.swagger.v3.oas.annotations.Hidden;
+
+@Hidden
 @ControllerAdvice
 public class GlobalExceptionsHandler {
 
@@ -17,7 +20,7 @@ public class GlobalExceptionsHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleGlobalException(Exception e) {
-        return new ResponseEntity<>("A server error occured", HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>("A server error occured: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 }
