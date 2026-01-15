@@ -20,7 +20,8 @@ public class GlobalExceptionsHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleGlobalException(Exception e) {
-        return new ResponseEntity<>("A server error occured: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        e.printStackTrace();
+        return new ResponseEntity<>("A server error occured", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 }

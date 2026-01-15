@@ -1,4 +1,4 @@
-package com.osc.leaderboard.github.Configuration;
+package com.osc.leaderboard.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

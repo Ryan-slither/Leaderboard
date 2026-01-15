@@ -4,6 +4,10 @@ import java.time.Instant;
 import java.util.List;
 
 import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.stereotype.Service;
 
 import com.osc.leaderboard.pullrequest.dto.PullRequestDTO;
@@ -13,6 +17,9 @@ import com.osc.leaderboard.pullrequest.repository.PullRequestRepository;
 
 @Service
 public class PullRequestService {
+
+    @Autowired
+    private MongoTemplate mongoTemplate;
 
     private final PullRequestRepository pullRequestRepository;
 
@@ -31,7 +38,19 @@ public class PullRequestService {
     }
 
     public List<PullRequestLeaderBoardDTO> getPullRequestLeaderboard() {
-        throw new UnsupportedOperationException("Unimplemented method 'getPullRequestLeaderboard'");
+        Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.lookup(
+                        "repos", "repoId", "_id", "reposList"),
+                Aggregation.unwind(
+                        "$reposList",
+                        false),
+                Aggregation.group(
+                        "$reposList").count().as("pullRequestCount"),
+                Aggregation.project(
+                        "pullRequestCount").and("$_id._id").as("repoId").and("$_id.name").as("repoName"));
+        AggregationResults<PullRequestLeaderBoardDTO> results = mongoTemplate.aggregate(aggregation, "pullrequests",
+                PullRequestLeaderBoardDTO.class);
+        return results.getMappedResults();
     }
 
     public static PullRequestDTO pullRequestToPullRequestDTO(PullRequest pullRequest) {

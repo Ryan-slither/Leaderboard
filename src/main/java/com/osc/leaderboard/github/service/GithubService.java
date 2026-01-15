@@ -1,6 +1,8 @@
 package com.osc.leaderboard.github.service;
 
 import java.io.IOException;
+import java.net.URI;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -8,10 +10,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +36,8 @@ public class GithubService {
             Arrays.asList("GithubSearchPullRequests1.json", "GithubSearchPullRequests2.json",
                     "GithubSearchPullRequests3.json", "GithubSearchPullRequests4.json"));
 
+    private static final String GITHUB_BASE_URL = "https://api.github.com";
+
     private final ObjectMapper objectMapper;
 
     private final Environment env;
@@ -43,16 +48,19 @@ public class GithubService {
 
     private final PullRequestService pullRequestService;
 
+    private final WebClient apiClient;
+
     public GithubService(ObjectMapper objectMapper, Environment env, RepoService repoService,
-            DeveloperService developerService, PullRequestService pullRequestService) {
+            DeveloperService developerService, PullRequestService pullRequestService, WebClient apiClient) {
         this.objectMapper = objectMapper;
         this.env = env;
         this.repoService = repoService;
         this.developerService = developerService;
         this.pullRequestService = pullRequestService;
+        this.apiClient = apiClient;
     }
 
-    private JsonNode mockPullRequestSearchRequest(Integer page, Instant earliestDate, Optional<Fetch> earlierThan)
+    private JsonNode mockPullRequestSearchRequest(Integer page, Instant earliestDate, Optional<Fetch> laterThan)
             throws IOException {
         // Precondition
         if (page == 0 || page > PULL_REQUEST_SEARCH_PATH.size()) {
@@ -60,7 +68,7 @@ public class GithubService {
         }
 
         // Precondition
-        if (earlierThan.isPresent()) {
+        if (laterThan.isPresent()) {
             // Return empty response for testing purposes and adjust count accordingly
             ClassPathResource resource = new ClassPathResource(PULL_REQUEST_SEARCH_PATH.get(3));
             JsonNode json = objectMapper.readTree(resource.getInputStream());
@@ -73,8 +81,44 @@ public class GithubService {
         return json;
     }
 
-    private JsonNode pullRequestSearchRequest(Integer page, Instant earliestDate, Optional<Fetch> earlierThan) {
-        throw new NotImplementedException();
+    // TODO: FIX TOTAL COUNT ONLY USING LAST FETCH AND FIGURE OUT WHY SOME RESULTS
+    // ARE MISSING
+    private JsonNode pullRequestSearchRequest(Integer page, Instant earliestDate, Optional<Fetch> laterThan)
+            throws RuntimeException {
+        String dateString = earliestDate.toString();
+        String dateBoundary = "+closed:";
+        if (laterThan.isPresent()) {
+            dateString = laterThan.get().getFetchedAt().toString();
+            dateBoundary += ">=";
+        } else {
+            dateBoundary += "<=";
+        }
+        String dateQuery = dateBoundary + dateString;
+
+        // Create custom GitHub QueryBuilder in future refactor
+        URI uri = UriComponentsBuilder.fromUriString(GITHUB_BASE_URL).path("/search/issues")
+                .queryParam("q", "org:ufosc+is:pr+is:merged+sort:created" + dateQuery)
+                .queryParam("per_page", 100)
+                .queryParam("page", page)
+                .queryParam("order", "desc")
+                .build().toUri();
+        System.out.println(uri.toString());
+
+        String result = apiClient.get()
+                .uri(uri)
+                .headers(h -> {
+                    h.setBearerAuth(env.getProperty("GITHUB_API_KEY"));
+                })
+                .retrieve()
+                .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(5))
+                .block();
+
+        try {
+            return objectMapper.readTree(result);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
     }
 
     private PullRequestSearchDTO processPullRequestSearchJson(JsonNode json) {
@@ -109,14 +153,15 @@ public class GithubService {
     }
 
     private JsonNode callPullRequestSearchRequest(Integer currPage, Instant earliestDate,
-            Optional<Fetch> earlierThan) {
+            Optional<Fetch> laterThan) {
         String target = env.getProperty("TARGET");
         JsonNode currJson;
-        if (target == "prod") {
-            currJson = pullRequestSearchRequest(currPage, earliestDate, earlierThan);
+        if (target != "test") {
+            // Page is always one for this because date is adjusted back
+            currJson = pullRequestSearchRequest(1, earliestDate, laterThan);
         } else {
             try {
-                currJson = mockPullRequestSearchRequest(currPage, earliestDate, earlierThan);
+                currJson = mockPullRequestSearchRequest(currPage, earliestDate, laterThan);
             } catch (IOException e) {
                 throw new RuntimeException(e.getMessage());
             }
@@ -126,12 +171,12 @@ public class GithubService {
     }
 
     // This should be called within the fetch service only
-    public Integer fetchPullRequests(Optional<Fetch> earlierThan) {
+    public Integer fetchPullRequests(Optional<Fetch> laterThan) {
         JsonNode currJson;
         Integer currPage = 1;
         Instant earliestDate = Instant.now().plus(1, ChronoUnit.DAYS);
 
-        currJson = callPullRequestSearchRequest(currPage, earliestDate, earlierThan);
+        currJson = callPullRequestSearchRequest(currPage, earliestDate, laterThan);
         PullRequestSearchDTO pullRequestSearchDTO = processPullRequestSearchJson(currJson);
         processPullRequestSearch(pullRequestSearchDTO);
         Integer totalCount = pullRequestSearchDTO.totalCount();
@@ -141,19 +186,19 @@ public class GithubService {
             for (int i = 2; i < totalPages + 1; ++i) {
                 earliestDate = pullRequestSearchDTO.earliestDate();
 
-                currJson = callPullRequestSearchRequest(i, earliestDate, earlierThan);
+                currJson = callPullRequestSearchRequest(i, earliestDate, laterThan);
                 pullRequestSearchDTO = processPullRequestSearchJson(currJson);
                 processPullRequestSearch(pullRequestSearchDTO);
-                totalCount = pullRequestSearchDTO.totalCount();
 
-                if (i == PULL_REQUEST_SEARCH_PATH.size() && env.getProperty("TARGET") != "prod")
+                if (i == PULL_REQUEST_SEARCH_PATH.size() && env.getProperty("TARGET") == "test")
                     break;
 
                 // // So we don't spam the Github API and get clapped
                 // // We may not need this yet:
+                // //
                 // https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api?apiVersion=2022-11-28#about-secondary-rate-limits
                 // try {
-                // TimeUnit.SECONDS.sleep(.5);
+                // TimeUnit.MILLISECONDS.sleep(500);
                 // } catch (InterruptedException ie) {
                 // Thread.currentThread().interrupt();
                 // }

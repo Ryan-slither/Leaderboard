@@ -4,9 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +17,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.osc.leaderboard.github.service.GithubService;
 import com.osc.leaderboard.pullrequest.dto.PullRequestDTO;
+import com.osc.leaderboard.pullrequest.dto.PullRequestLeaderBoardDTO;
 import com.osc.leaderboard.pullrequest.service.PullRequestService;
+import com.osc.leaderboard.repo.dtos.RepoDTO;
+import com.osc.leaderboard.repo.service.RepoService;
 
 class GithubServiceTests extends BaseTest {
 
@@ -40,11 +46,28 @@ class GithubServiceTests extends BaseTest {
     public static final Integer WORKOUT_COUNT = 11;
     public static final Integer NOVEL_COUNT = 15;
 
+    public static final Map<String, Integer> repoCountMap = new HashMap<>(Map.ofEntries(
+            Map.entry("Jukebox-Frontend", JUKEBOX_FRONTEND_COUNT),
+            Map.entry("Jukebox-Server", JUKEBOX_SERVER_COUNT),
+            Map.entry("TERMINALCASINO", TERMINAL_CASINO_COUNT),
+            Map.entry("OSC_Workout_App", WORKOUT_COUNT),
+            Map.entry("Studygatchi", STUDY_GATCHI_COUNT),
+            Map.entry("Club_Website_2", WEBSITE_TWO_COUNT),
+            Map.entry("TERMINALMONOPOLY", TERMINAL_MONOPOLY_COUNT),
+            Map.entry("hackathon-website", HACKATHON_COUNT),
+            Map.entry("VisualNovel", NOVEL_COUNT),
+            Map.entry("hide-and-seek", HIDE_SEEK_COUNT),
+            Map.entry("Echo-Chat", ECHO_CHAT_COUNT),
+            Map.entry("osc-drone", DRONE_COUNT)));
+
     @Autowired
     private GithubService githubService;
 
     @Autowired
     private PullRequestService pullRequestService;
+
+    @Autowired
+    private RepoService repoService;
 
     @Test
     void serviceNotNull() {
@@ -61,8 +84,30 @@ class GithubServiceTests extends BaseTest {
         List<PullRequestDTO> pullRequestDTOs = pullRequestService.findAllPullRequests();
         assertEquals(TOTAL_ACTUAL_COUNT, pullRequestDTOs.size());
 
-        // TODO: TEST ALL COUNTS
-        assertTrue(true);
+        List<RepoDTO> repoDTOs = repoService.findAllRepos();
+        Map<ObjectId, String> repoIdToNameMap = new HashMap<>();
+        for (RepoDTO repo : repoDTOs) {
+            repoIdToNameMap.put(new ObjectId(repo.id()), repo.name());
+        }
+        assertEquals(repoIdToNameMap.size(), repoCountMap.size());
+
+        List<PullRequestLeaderBoardDTO> pullRequestLeaderBoardDTOs = pullRequestService.getPullRequestLeaderboard();
+        for (PullRequestLeaderBoardDTO pr : pullRequestLeaderBoardDTOs) {
+            assertEquals(repoCountMap.get(pr.repoName()), pr.pullRequestCount());
+        }
+
+        for (PullRequestDTO pr : pullRequestDTOs) {
+            String repoName = repoIdToNameMap.get(pr.repoId());
+            Integer repoCount = repoCountMap.get(repoIdToNameMap.get(pr.repoId()));
+
+            assertTrue(repoCount - 1 >= 0);
+
+            repoCountMap.put(repoName, repoCount - 1);
+        }
+
+        repoCountMap.forEach((repoName, count) -> {
+            assertEquals(0, count);
+        });
 
         long endTime = System.nanoTime();
         logger.info("Time taken for JSON parsing: " + ((endTime - startTime) / 1_000_000_000.0));
