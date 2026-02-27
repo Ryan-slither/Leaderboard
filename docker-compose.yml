@@ -13,13 +13,13 @@ services:
   leaderboard:
     depends_on:
       - mongo_db
-    build: 
+    build:
       context: ./
       target: dev
     restart: unless-stopped
     env_file: ./.env
     environment:
-      - TARGET=dev
+      - SPRING_PROFILES_ACTIVE=dev
     ports:
       - $SPRING_LOCAL_PORT:$SPRING_DOCKER_PORT
     volumes:

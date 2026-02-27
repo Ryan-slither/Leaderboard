@@ -1,10 +1,13 @@
 package com.osc.leaderboard.fetch.service;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.osc.leaderboard.fetch.dtos.FetchDTO;
 import com.osc.leaderboard.fetch.model.Fetch;
@@ -29,10 +32,14 @@ public class FetchService {
         Optional<Fetch> existingFetch = fetchRepository.findTopByOrderByFetchedAtDesc();
 
         Instant fetchedAt = Instant.now();
-        Integer totalCount = githubService.fetchPullRequests(existingFetch);
-        Fetch fetch = new Fetch(null, fetchedAt, totalCount);
-        Fetch fetchSaved = fetchRepository.save(fetch);
-        return fetchToFetchDTO(fetchSaved);
+        try {
+            Integer totalCount = githubService.fetchPullRequests(existingFetch);
+            Fetch fetch = new Fetch(null, fetchedAt, totalCount);
+            Fetch fetchSaved = fetchRepository.save(fetch);
+            return fetchToFetchDTO(fetchSaved);
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     public List<FetchDTO> getFetchesByDateBetween(Instant start, Instant end) {
