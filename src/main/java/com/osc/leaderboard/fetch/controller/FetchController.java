@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.osc.leaderboard.fetch.dtos.FetchDTO;
 import com.osc.leaderboard.fetch.service.FetchService;
@@ -34,7 +35,7 @@ public class FetchController {
     public ResponseEntity<List<FetchDTO>> getFetchesByDate(@RequestParam(required = false) Instant start,
             @RequestParam(required = false) Instant end) throws BadRequestException {
         if (start == null && end == null) {
-            throw new BadRequestException("A start or end date must be specified");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A start or end date must be specified");
         }
 
         if (start == null) {

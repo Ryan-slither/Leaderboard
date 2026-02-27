@@ -1,6 +1,7 @@
 services:
   mongo_db_test:
     image: mongo:8.0
+    command: mongod --quiet --logpath /dev/null
     restart: unless-stopped
     env_file: ./.env
     environment:
@@ -11,13 +12,13 @@ services:
   leaderboard_test:
     depends_on:
       - mongo_db_test
-    build: 
+    build:
       context: ./
       target: test
-    env_file: 
+    env_file:
       - ./.env
       - ./test.env
     ports:
       - $SPRING_LOCAL_PORT:$SPRING_DOCKER_PORT
     environment:
-      - TARGET=test
+      - SPRING_PROFILES_ACTIVE=test

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,7 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.osc.leaderboard.github.service.GithubService;
+import com.osc.leaderboard.github.service.MockGithubService;
 import com.osc.leaderboard.pullrequest.dto.PullRequestDTO;
 import com.osc.leaderboard.pullrequest.dto.PullRequestLeaderBoardDTO;
 import com.osc.leaderboard.pullrequest.service.PullRequestService;
@@ -61,7 +62,7 @@ class GithubServiceTests extends BaseTest {
             Map.entry("osc-drone", DRONE_COUNT)));
 
     @Autowired
-    private GithubService githubService;
+    private MockGithubService githubService;
 
     @Autowired
     private PullRequestService pullRequestService;
@@ -77,7 +78,7 @@ class GithubServiceTests extends BaseTest {
     @Test
     // Fetch pull requests runs without error for mocked api call and returns
     // correct total count
-    void fetchPullRequestsTest() {
+    void fetchPullRequestsTest() throws IOException {
         long startTime = System.nanoTime();
 
         githubService.fetchPullRequests(Optional.empty());
